@@ -8,7 +8,7 @@ import ru.konovalovily.data.repository.MangaRepositoryImpl
 import ru.konovalovily.plugins.*
 
 internal fun main() {
-    embeddedServer(Netty, port = System.getenv("PORT").toInt()){
+    embeddedServer(Netty, port = 8080){
         module()
     }
         .start(wait = true)
