@@ -8,7 +8,7 @@ import ru.konovalovily.data.repository.MangaRepositoryImpl
 import ru.konovalovily.plugins.*
 
 internal fun main() {
-    embeddedServer(CIO, port = 8080){
+    embeddedServer(CIO, host = "yahhoo-back.onrender.com") {
         module()
     }
         .start(wait = true)
