@@ -16,6 +16,7 @@ internal data class MangaDto(
     val author: String? = null,
     val drawer: String? = null,
     val views: String? = null,
+    val description: String? = null,
     val translator: String? = null,
     val chapters: List<ChapterDto> = listOf(),
 )
@@ -32,6 +33,7 @@ internal fun Manga.mapToDomain() = MangaDto(
     author = author,
     drawer = drawer,
     views = views,
+    description = description,
     translator = translator,
     chapters = chapters.map { it.mapToDomain() }
 )

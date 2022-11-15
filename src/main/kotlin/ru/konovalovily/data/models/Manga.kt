@@ -13,5 +13,6 @@ internal data class Manga(
     val drawer: String? = null,
     val views: String? = null,
     val translator: String? = null,
+    val description: String? = null,
     val chapters: List<Chapter> = listOf(),
 )

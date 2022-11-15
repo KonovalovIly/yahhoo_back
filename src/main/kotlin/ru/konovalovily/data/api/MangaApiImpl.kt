@@ -69,6 +69,7 @@ internal class MangaApiImpl : MangaApi {
             val titles = it.getElementsByTag("a")[1].text()
             chapters.add(Chapter(links.subSequence(ind, links.length).toString(), download, titles, date, links))
         }
+        val description = doc.getElementsByClass("fdesc slice-this ficon clearfix")
 
         return Manga(
             id = id,
@@ -81,6 +82,7 @@ internal class MangaApiImpl : MangaApi {
             drawer = extractOtherPart(elements, "Художник(и):"),
             views = extractOtherPart(elements, "Просмотры:"),
             translator = extractOtherPart(elements, "Переводчик::"),
+            description = description.text(),
             image = doc.getElementsByClass("img-responsive")[0].attr("src"),
             chapters = chapters,
             category = extractCategory(elements)
