@@ -20,35 +20,28 @@ internal class MangaApiImpl : MangaApi {
     override suspend fun findMangasByName(name: String): List<Manga> {
         val doc: Document = Jsoup.connect("https://mangabook.org/dosearch?do=search&subaction=search&query=$name").get()
         val element = doc.getElementsByClass("manga-list")[0]
-        var listMangas = mutableListOf<Manga>()
+        val listMangas = mutableListOf<Manga>()
+        val startId = 28
 
-        element.getElementsByClass("flist row").forEach {
-            val html = it.html()
-            val startLink = 9
-            val startId = 37
-            val endLink = html.indexOf("\" class=\"")
-            val startTitle = html.indexOf("<strong>")
-            val endTitle = html.indexOf("</strong>")
+        element.children().forEach {
+            val link = it.getElementsByClass("alpha-link").attr("href")
+            val elements = it.getElementsByClass("vis")
             listMangas.add(
                 Manga(
-                    id = html.subSequence(startId, endLink).toString(),
-                    link = html.subSequence(startLink, endLink).toString(),
-                    title = html.subSequence(startTitle + 8, endTitle).toString()
-                )
-            )
-        }
-        element.getElementsByClass("img-responsive").forEach { el ->
-            listMangas = listMangas.map { it.copy(image = el.attr("src")) }.toMutableList()
-        }
-        element.getElementsByClass("flist-col").forEach { el ->
-            val elements = el.getElementsByClass("vis")
-            listMangas = listMangas.map {
-                it.copy(
+                    id = link.drop(startId),
+                    title = it.getElementsByClass("img-responsive").attr("alt"),
                     status = extractOtherPart(elements, "Статус:"),
                     genre = extractOtherPart(elements, "Жанр (вид):"),
+                    anotherTitle = extractOtherPart(elements, "Другие названия:"),
+                    link = link,
+                    author = extractOtherPart(elements, "Автор(ы):"),
+                    drawer = extractOtherPart(elements, "Художник(и):"),
+                    views = extractOtherPart(elements, "Просмотры:"),
+                    translator = extractOtherPart(elements, "Переводчик::"),
+                    image = it.getElementsByClass("img-responsive").attr("src"),
                     category = extractCategory(elements)
                 )
-            }.toMutableList()
+            )
         }
         return listMangas
     }
