@@ -26,22 +26,24 @@ internal class MangaApiImpl : MangaApi {
         element.children().forEach {
             val link = it.getElementsByClass("alpha-link").attr("href")
             val elements = it.getElementsByClass("vis")
-            listMangas.add(
-                Manga(
-                    id = link.drop(startId),
-                    title = it.getElementsByClass("img-responsive").attr("alt"),
-                    status = extractOtherPart(elements, "Статус:"),
-                    genre = extractOtherPart(elements, "Жанр (вид):"),
-                    anotherTitle = extractOtherPart(elements, "Другие названия:"),
-                    link = link,
-                    author = extractOtherPart(elements, "Автор(ы):"),
-                    drawer = extractOtherPart(elements, "Художник(и):"),
-                    views = extractOtherPart(elements, "Просмотры:"),
-                    translator = extractOtherPart(elements, "Переводчик::"),
-                    image = it.getElementsByClass("img-responsive").attr("src"),
-                    category = extractCategory(elements)
+            if (link.drop(startId).isNotEmpty()){
+                listMangas.add(
+                    Manga(
+                        id = link.drop(startId),
+                        title = it.getElementsByClass("img-responsive").attr("alt"),
+                        status = extractOtherPart(elements, "Статус:"),
+                        genre = extractOtherPart(elements, "Жанр (вид):"),
+                        anotherTitle = extractOtherPart(elements, "Другие названия:"),
+                        link = link,
+                        author = extractOtherPart(elements, "Автор(ы):"),
+                        drawer = extractOtherPart(elements, "Художник(и):"),
+                        views = extractOtherPart(elements, "Просмотры:"),
+                        translator = extractOtherPart(elements, "Переводчик::"),
+                        image = it.getElementsByClass("img-responsive").attr("src"),
+                        category = extractCategory(elements)
+                    )
                 )
-            )
+            }
         }
         return listMangas
     }
