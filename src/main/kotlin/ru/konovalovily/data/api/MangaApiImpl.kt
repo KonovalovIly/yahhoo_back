@@ -26,7 +26,8 @@ internal class MangaApiImpl : MangaApi {
         element.children().forEach {
             val link = it.getElementsByClass("alpha-link").attr("href")
             val elements = it.getElementsByClass("vis")
-            if (link.drop(startId).isNotEmpty()){
+            val imageLink = it.getElementsByClass("img-responsive").attr("alt")
+            if (imageLink.isNotEmpty()) {
                 listMangas.add(
                     Manga(
                         id = link.drop(startId),
