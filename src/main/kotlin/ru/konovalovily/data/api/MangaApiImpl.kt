@@ -1,5 +1,8 @@
 package ru.konovalovily.data.api
 
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import ru.konovalovily.data.models.Category
 import ru.konovalovily.data.models.Chapter
 import ru.konovalovily.data.models.Manga
@@ -88,7 +91,9 @@ internal class MangaApiImpl : MangaApi {
     override suspend fun getMangaChapterByLink(mangaId: String?, chapterId: String?): List<String> {
         val doc: Document = Jsoup.connect("https://mangabook.org/manga/$mangaId/$chapterId").get()
         val listIndex = doc.getElementsByClass("btn-filt2").select("select").text().split(" ")
-        return listIndex.map { extractImageLink("https://mangabook.org/manga/$mangaId/$chapterId/$it") }
+        return listIndex.map {
+            GlobalScope.async { extractImageLink("https://mangabook.org/manga/$mangaId/$chapterId/$it") }
+        }.awaitAll()
     }
 
     override suspend fun getMangasByCategoryId(categoryId: String, page: Int): SearchResponce {
