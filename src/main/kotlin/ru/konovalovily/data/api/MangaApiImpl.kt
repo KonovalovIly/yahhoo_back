@@ -1,8 +1,6 @@
 package ru.konovalovily.data.api
 
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.*
 import ru.konovalovily.data.models.Category
 import ru.konovalovily.data.models.Chapter
 import ru.konovalovily.data.models.Manga
@@ -11,17 +9,21 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
+import ru.konovalovily.domain.models.SubscribeRequestDto
+import ru.konovalovily.domain.models.SubscribeResponseDto
 
 
 internal class MangaApiImpl : MangaApi {
 
+    private val coroutineScope = CoroutineScope(Dispatchers.IO)
+
     override suspend fun lastUpdated(): List<Manga> {
-        val doc: Document = Jsoup.connect("https://mangabook.org/").get()
+        val doc: Document = Jsoup.connect(BASE_URL).get()
         return extractMangasByResponce(doc)
     }
 
     override suspend fun findMangasByName(name: String): List<Manga> {
-        val doc: Document = Jsoup.connect("https://mangabook.org/dosearch?do=search&subaction=search&query=$name").get()
+        val doc: Document = Jsoup.connect("${BASE_URL}dosearch?do=search&subaction=search&query=$name").get()
         val element = doc.getElementsByClass("manga-list")[0]
         val listMangas = mutableListOf<Manga>()
         val startId = 28
@@ -53,21 +55,21 @@ internal class MangaApiImpl : MangaApi {
     }
 
     override suspend fun getMangaById(id: String): Manga {
-        val link = "https://mangabook.org/manga/$id"
+        val link = "${BASE_URL}manga/$id"
         val doc: Document = Jsoup.connect(link).get()
         val el = doc.getElementsByClass("flist-col")[0]
         val elements = el.getElementsByClass("vis")
         val chapterElem = doc.getElementsByAttributeValue("style", "padding: 3px 0;")
-        val chapters = mutableListOf<Chapter>()
-
-        chapterElem.forEach {
-            val download = it.getElementsByClass("btn-filt2").attr("href")
-            val date = it.getElementsByClass("date-chapter-title-rtl").text()
-            val links = it.getElementsByTag("a")[1].attr("href")
-            val ind = "https://mangabook.org/manga/".length + id.length + 1
-            val titles = it.getElementsByTag("a")[1].text()
-            chapters.add(Chapter(links.subSequence(ind, links.length).toString(), download, titles, date, links))
-        }
+        val chapters = chapterElem.map {
+            coroutineScope.async {
+                val download = it.getElementsByClass("btn-filt2").attr("href")
+                val date = it.getElementsByClass("date-chapter-title-rtl").text()
+                val links = it.getElementsByTag("a")[1].attr("href")
+                val ind = "https://mangabook.org/manga/".length + id.length + 1
+                val titles = it.getElementsByTag("a")[1].text()
+                Chapter(links.subSequence(ind, links.length).toString(), download, titles, date, links)
+            }
+        }.awaitAll()
         val description = doc.getElementsByClass("fdesc slice-this ficon clearfix")
 
         return Manga(
@@ -89,10 +91,10 @@ internal class MangaApiImpl : MangaApi {
     }
 
     override suspend fun getMangaChapterByLink(mangaId: String?, chapterId: String?): List<String> {
-        val doc: Document = Jsoup.connect("https://mangabook.org/manga/$mangaId/$chapterId").get()
+        val doc: Document = Jsoup.connect("${BASE_URL}manga/$mangaId/$chapterId").get()
         val listIndex = doc.getElementsByClass("btn-filt2").select("select").text().split(" ")
         return listIndex.map {
-            GlobalScope.async { extractImageLink("https://mangabook.org/manga/$mangaId/$chapterId/$it") }
+            coroutineScope.async { extractImageLink("https://mangabook.org/manga/$mangaId/$chapterId/$it") }
         }.awaitAll()
     }
 
@@ -115,7 +117,7 @@ internal class MangaApiImpl : MangaApi {
 
     override suspend fun getMangaByPopularity(page: Int): SearchResponce {
         val link =
-            "https://mangabook.org/filterList?page=$page&ftype[]=1&cat=&status[]=0&alpha=&year_min=&year_max=&sortBy=views&asc=true&author=&artist=&tag="
+            "${BASE_URL}filterList?page=$page&ftype[]=1&cat=&status[]=0&alpha=&year_min=&year_max=&sortBy=views&asc=true&author=&artist=&tag="
         val doc: Document = Jsoup.connect(link).get()
         var lastItem = 0
         try {
@@ -129,6 +131,21 @@ internal class MangaApiImpl : MangaApi {
             mangas = extractMangasByResponce(doc),
             pagesMax = lastItem
         )
+    }
+
+    override suspend fun getSubscribedCountChapters(data: SubscribeRequestDto): SubscribeResponseDto {
+        val doc: Document = Jsoup.connect("${BASE_URL}manga/${data.mangaId}").get()
+        val chapterElem = doc.getElementsByAttributeValue("style", "padding: 3px 0;")
+        val baseLinkLen = "https://mangabook.org/manga/${data.mangaId}/".length
+        var counter = 0
+
+        for (elem in chapterElem) {
+            val links = elem.getElementsByTag("a")[1].attr("href")
+            val id = links.subSequence(baseLinkLen, links.length).toString()
+            if (data.lastChapter == id) break
+            counter++
+        }
+        return SubscribeResponseDto(data.lastChapter, counter)
     }
 
     private fun extractImageLink(linkPage: String): String {
@@ -162,27 +179,29 @@ internal class MangaApiImpl : MangaApi {
                 return el.text().subSequence(partName.length + 1, el.text().length).toString()
             }
         }
-        println()
         return null
     }
 
-    private fun extractMangasByResponce(elements: Element): List<Manga> {
+    private suspend fun extractMangasByResponce(elements: Element): List<Manga> {
         val element = elements.getElementsByClass("short clearfix")
-        val listMangas = mutableListOf<Manga>()
-        element.forEach {
-            val title = it.getElementsByClass("sh-title").text()
-            val link = it.getElementsByTag("a").attr("href")
-            val id = link.subSequence(28, link.length)
-            val imageLink = it.getElementsByTag("img").attr("src")
-            listMangas.add(
+        return element.map {
+            coroutineScope.async {
+                val title = it.getElementsByClass("sh-title").text()
+                val link = it.getElementsByTag("a").attr("href")
+                val id = link.subSequence(28, link.length)
+                val imageLink = it.getElementsByTag("img").attr("src")
                 Manga(
                     id = id.toString(),
                     title = title,
                     link = link,
                     image = imageLink
                 )
-            )
-        }
-        return listMangas
+            }
+        }.awaitAll()
+    }
+
+    private companion object {
+
+        const val BASE_URL = "https://mangabook.org/"
     }
 }

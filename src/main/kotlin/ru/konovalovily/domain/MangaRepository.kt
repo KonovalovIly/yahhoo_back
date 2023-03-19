@@ -1,5 +1,6 @@
 package ru.konovalovily.domain
 
+import ru.konovalovily.domain.models.*
 import ru.konovalovily.domain.models.MangaDto
 import ru.konovalovily.domain.models.SearchResponseDto
 import ru.konovalovily.domain.models.UpdatedMangaDto
@@ -43,4 +44,7 @@ internal interface MangaRepository {
      * Получить список манги по популярности
      */
     suspend fun getMangaByPopularity(page: Int): SearchResponseDto
+
+
+    suspend fun getSubscribedCountChapters(data: List<SubscribeRequestDto>): List<SubscribeResponseDto>
 }
